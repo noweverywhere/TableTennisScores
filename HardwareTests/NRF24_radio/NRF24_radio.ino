@@ -22,11 +22,13 @@ byte addresses[][6] = {"1Node","2Node"};
 bool role = 0;
 
 void setup() {
+  digitalWrite(5, HIGH);
   Serial.begin(115200);
   Serial.println(F("RF24/examples/GettingStarted"));
   Serial.println(F("*** PRESS 'T' to begin transmitting to the other node"));
   
   radio.begin();
+  radio.powerUp();
 
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.

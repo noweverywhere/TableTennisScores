@@ -1,11 +1,16 @@
-/**
- * Adafruit Multibutton Debounce
- * https://blog.adafruit.com/2009/10/20/example-code-for-multi-button-checker-with-debouncing/
- **/
+#include <SPI.h>
+#include "RF24.h"
+
+/****************** Radio Config ***************************/
+/***      Set this radio as radio number 0 or 1         ***/
+bool radioNumber = 0;
+RF24 radio(7,8);
+byte addresses[][6] = {"1Node","2Node"};
+/**********************************************************/
 
 
+/****************** Buttons Config ***************************/
 #define DEBOUNCE 100  // button debouncer, how many ms to debounce, 5+ ms is usually plenty
-
 // here is where we define the buttons that we'll use. button "1" is the first, button "6" is the 6th, etc
 byte buttons[] = {14, 15, 16, 17, 18, 19}; // the analog 0-5 pins are also known as 14-19
 // This handy macro lets us determine how big the array up above is, by checking the size
@@ -14,37 +19,47 @@ byte buttons[] = {14, 15, 16, 17, 18, 19}; // the analog 0-5 pins are also known
 byte pressed[NUMBUTTONS];
 byte justpressed[NUMBUTTONS];
 byte justreleased[NUMBUTTONS];
+/**********************************************************/
 
-void setup() 
-{
-  byte i;
+
+
+void setup() {
   
-  // set up serial port
-  Serial.begin(115200);
-  Serial.print("Button checker with ");
-  Serial.print(NUMBUTTONS, DEC);
-  Serial.println(" buttons");
-
-  // pin13 LED
-  pinMode(13, OUTPUT);
  
-  // Make input & enable pull-up resistors on switch pins
+  Serial.begin(115200);
+  Serial.println(F("TABLE"));
+  configureRadio();
+  configureButtons();
+}
+
+void configureRadio() {
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH); //set 5 high since it is the ss for the RFID reader
+  radio.begin();
+  radio.powerUp();
+
+  // Set the PA Level low to prevent power supply related issues since this is a
+ // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
+  radio.setPALevel(RF24_PA_LOW);
+  radio.openWritingPipe(addresses[0]);
+  radio.openReadingPipe(1,addresses[1]);
+}
+
+void configureButtons() {
   for (byte i=0; i < NUMBUTTONS; i++) {
     pinMode(buttons[i], INPUT);
     digitalWrite(buttons[i], HIGH);
   }
 }
 
+static long lasttime;
 void check_switches()
 {
   static byte previousstate[NUMBUTTONS];
   static byte currentstate[NUMBUTTONS];
-  static long lasttime;
+  
   byte index;
 
-  //if (millis()  // we wrapped around, lets just try again
-  //   lasttime = millis();
-  //}
   
   if ((lasttime + DEBOUNCE) > millis()) {
     // not enough time has passed to debounce
@@ -57,15 +72,7 @@ void check_switches()
     justreleased[index] = 0;
      
     currentstate[index] = digitalRead(buttons[index]);   // read the button
-    
-    /*     
-    Serial.print(index, DEC);
-    Serial.print(": cstate=");
-    Serial.print(currentstate[index], DEC);
-    Serial.print(", pstate=");
-    Serial.print(previousstate[index], DEC);
-    Serial.print(", press=");
-    */
+
     
     if (currentstate[index] == previousstate[index]) {
       if ((pressed[index] == LOW) && (currentstate[index] == LOW)) {
@@ -85,8 +92,8 @@ void check_switches()
 
 
 void loop() {
-  check_switches();      // when we check the switches we'll get the current state
-  
+  check_switches();
+
   for (byte i = 0; i < NUMBUTTONS; i++) {
     //if (justpressed[i]) {
     //  Serial.print(i, DEC);
@@ -101,6 +108,7 @@ void loop() {
     if (pressed[i]) {
       Serial.print(i, DEC);
       Serial.println(" pressed");
+      radio.write( &i, sizeof(byte));
       // is the button pressed down at this moment
     }
   }

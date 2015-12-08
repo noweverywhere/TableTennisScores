@@ -10,61 +10,50 @@
 
 /****************** User Config ***************************/
 /***      Set this radio as radio number 0 or 1         ***/
-bool radioNumber = 0;
+bool radioNumber = 1;
 
 /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
 RF24 radio(9,10);
 /**********************************************************/
 
-byte addresses[][6] = {"trans","recvr"};
+byte addresses[][6] = {"1Node","2Node"};
 
 // Used to control whether this node is sending or receiving
 bool role = 0;
 
-/****** Radio message format *****/
-byte messageBuffer[5];
-byte buttonHeader = 0xAA;
-byte cardHeader = 0xBB;
-
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("Buttons NRF24 Receiver"));
-  delay(100);
-  Serial.begin(115200);
-  Serial.println(F("RF24/examples/GettingStarted"));
-  Serial.println(F("*** PRESS 'T' to begin transmitting to the other node"));
-  
+  Serial.println(F("BASE STATION"));  
   radio.begin();
+  radio.powerUp();
 
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_LOW);
   
   // Open a writing and reading pipe on each radio, with opposite addresses
-  radio.openWritingPipe(addresses[0]);
-  radio.openReadingPipe(1,addresses[1]);
+  radio.openWritingPipe(addresses[1]);
+  radio.openReadingPipe(1,addresses[0]);
   
   // Start the radio listening for data
   radio.startListening();
-  Serial.println(F("Setup complete"));
 }
 
 void loop() {
+  
+/****************** Listen ***************************/
 
-/****************** Pong Back Role ***************************/
-    
+    byte buttonPressed;
     
     if( radio.available()){
+                                                                    // Variable for the received timestamp
       while (radio.available()) {                                   // While there is data ready
-        radio.read( &messageBuffer, sizeof(messageBuffer) );             // Get the payload
-        printMessage();
-      }      
-    }
+        radio.read( &buttonPressed, sizeof(byte) );             // Get the payload
+      }
+     
+      //radio.stopListening();                                        // First, stop listening so we can talk   
+      Serial.print(F("Sent response "));
+      Serial.println(buttonPressed);  
+   }
 } // Loop
 
-void printMessage() {
-  for (byte i = 0; i < sizeof(messageBuffer); i++) {
-    Serial.print(messageBuffer[i], HEX);
-  }
-  Serial.println();
-}

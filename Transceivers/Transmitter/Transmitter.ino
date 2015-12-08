@@ -6,164 +6,138 @@
 */
 
 #include <SPI.h>
-//#include "RF24.h"
-//#include <MFRC522.h>
+#include "RF24.h"
 
 /****************** User Config ***************************/
 /***      Set this radio as radio number 0 or 1         ***/
-bool radioNumber = 1;
+bool radioNumber = 0;
 
 /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
-//RF24 radio(7,8);
+RF24 radio(7,8);
+/**********************************************************/
 
-byte addresses[][6] = {"trans","recvr"};
+byte addresses[][6] = {"1Node","2Node"};
 
 // Used to control whether this node is sending or receiving
-bool role = 1; // 1 = transmitter, 0 = receiver
-
-
-/**********  Buttons debounce config **********************/
-#define DEBOUNCE 5  // button debouncer, how many ms to debounce, 5+ ms is usually plenty
-// here is where we define the buttons that we'll use. button "1" is the first, button "6" is the 6th, etc
-byte buttons[] = {14, 15, 16, 17, 18, 19}; // the analog 0-5 pins are also known as 14-19
-// This handy macro lets us determine how big the array up above is, by checking the size
-#define NUMBUTTONS sizeof(buttons)
-// we will track if a button is just pressed, just released, or 'currently pressed' 
-byte pressed[NUMBUTTONS];
-byte justpressed[NUMBUTTONS];
-byte justreleased[NUMBUTTONS];
-
-/******* RFID reader config **********/
-//#define RST_PIN		6 
-//#define SS_PIN		5 // SDA
-//MFRC522 mfrc522(SS_PIN, RST_PIN);// Create MFRC522 instance
-
-/****** Radio message format *****/
-//byte messageBuffer[] = {0x00,0x00,0x00,0x00,0x00};
-//byte buttonHeader = 0xAA;
-//byte cardHeader = 0xBB;
-
-
-void sendMessage() {
-  /****************** Ping Out Role ***************************/ 
-  
-  //radio.stopListening();                                    // First, stop listening so we can talk.
-  
-  /*
-  //Serial.println(F("Now sending"));
-
-   if (!radio.write( &messageBuffer, sizeof(messageBuffer) )){
-     Serial.println(F("failed"));
-   }
-      
-  radio.startListening();                                    // Now, continue listening  
-  */
-}
-
-
-void check_switches()
-{
-  static byte previousstate[NUMBUTTONS];
-  static byte currentstate[NUMBUTTONS];
-  static long lasttime;
-  byte index;
-
-  //if (millis()  // we wrapped around, lets just try again
-  //   lasttime = millis();
-  //}
-  
-  if ((lasttime + DEBOUNCE) > millis()) {
-    // not enough time has passed to debounce
-    return; 
-  }
-  // ok we have waited DEBOUNCE milliseconds, lets reset the timer
-  lasttime = millis();
-  
-  for (index = 0; index < NUMBUTTONS; index++) { // when we start, we clear out the "just" indicators
-    justreleased[index] = 0;
-     
-    currentstate[index] = digitalRead(buttons[index]);   // read the button
-    
-    
-    if (currentstate[index] == previousstate[index]) {
-      if ((pressed[index] == LOW) && (currentstate[index] == LOW)) {
-          // just pressed
-          justpressed[index] = 1;
-      }
-      else if ((pressed[index] == HIGH) && (currentstate[index] == HIGH)) {
-          // just released
-          justreleased[index] = 1;
-      }
-      pressed[index] = !currentstate[index];  // remember, digital HIGH means NOT pressed
-    }
-    //Serial.println(pressed[index], DEC);
-    previousstate[index] = currentstate[index];   // keep a running tally of the buttons
-  }
-}
-/*
-void checkRFIDReader() {
-  if (! mfrc522.PICC_IsNewCardPresent()) {
-    return;
-  }
-
-  //Select a new card
-  if (! mfrc522.PICC_ReadCardSerial()) {
-    return;
-  }
-  
-  for (byte i = 0; i < mfrc522.uid.size; i++) {
-    messageBuffer[i+1] = mfrc522.uid.uidByte[i];
-  }
-  
-  messageBuffer[0] = cardHeader;
-  sendMessage();
-}*/
+bool role = 0;
 
 void setup() {
-//  Serial.begin(115200);
-  Serial.println(F("RF24 Button Transmitter"));
-//  Serial.println(F("*** PRESS 'T' to begin transmitting to the other node"));
+  digitalWrite(5, HIGH);
+  Serial.begin(115200);
+  Serial.println(F("RF24/examples/GettingStarted"));
+  Serial.println(F("*** PRESS 'T' to begin transmitting to the other node"));
   
- /* radio.begin();
+  radio.begin();
+  radio.powerUp();
 
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_LOW);
   
   // Open a writing and reading pipe on each radio, with opposite addresses
-  radio.openWritingPipe(addresses[1]);
-  radio.openReadingPipe(1,addresses[0]);
+  if(radioNumber){
+    radio.openWritingPipe(addresses[1]);
+    radio.openReadingPipe(1,addresses[0]);
+  }else{
+    radio.openWritingPipe(addresses[0]);
+    radio.openReadingPipe(1,addresses[1]);
+  }
   
   // Start the radio listening for data
-  radio.startListening();
-  
-    // Make input & enable pull-up resistors on switch pins
-  for (byte i=0; i < NUMBUTTONS; i++) {
-    pinMode(buttons[i], INPUT);
-    digitalWrite(buttons[i], HIGH);
-  }
-  //SPI.begin();		// Init SPI bus
-  //mfrc522.PCD_Init();	// Init MFRC522 card
-  */
-  Serial.println(F("Setup complete"));
 }
 
 void loop() {
   
-  /*check_switches();      // when we check the switches we'll get the current state
   
-  for (byte i = 0; i < NUMBUTTONS; i++) {
-    if (pressed[i]) {
-      //Serial.print(i, DEC);
-      //Serial.println(" pressed");
-      // is the button pressed down at this moment
-      messageBuffer[0] = buttonHeader;
-      messageBuffer[1] = i;
-      sendMessage();
+/****************** Ping Out Role ***************************/  
+if (role == 1)  {
+    
+    radio.stopListening();                                    // First, stop listening so we can talk.
+    
+    
+    Serial.println(F("Now sending"));
+
+    unsigned long time = micros();                             // Take the time, and send it.  This will block until complete
+     if (!radio.write( &time, sizeof(unsigned long) )){
+       Serial.println(F("failed"));
+     }
+        
+    radio.startListening();                                    // Now, continue listening
+    
+    unsigned long started_waiting_at = micros();               // Set up a timeout period, get the current microseconds
+    boolean timeout = false;                                   // Set up a variable to indicate if a response was received or not
+    
+    while ( ! radio.available() ){                             // While nothing is received
+      if (micros() - started_waiting_at > 200000 ){            // If waited longer than 200ms, indicate timeout and exit while loop
+          timeout = true;
+          break;
+      }      
+    }
+        
+    if ( timeout ){                                             // Describe the results
+        Serial.println(F("Failed, response timed out."));
+    }else{
+        unsigned long got_time;                                 // Grab the response, compare, and send to debugging spew
+        radio.read( &got_time, sizeof(unsigned long) );
+        unsigned long time = micros();
+        
+        // Spew it
+        Serial.print(F("Sent "));
+        Serial.print(time);
+        Serial.print(F(", Got response "));
+        Serial.print(got_time);
+        Serial.print(F(", Round-trip delay "));
+        Serial.print(time-got_time);
+        Serial.println(F(" microseconds"));
+    }
+
+    // Try again 1s later
+    delay(1000);
+  }
+
+
+
+/****************** Pong Back Role ***************************/
+
+  if ( role == 0 )
+  {
+    unsigned long got_time;
+    
+    if( radio.available()){
+                                                                    // Variable for the received timestamp
+      while (radio.available()) {                                   // While there is data ready
+        radio.read( &got_time, sizeof(unsigned long) );             // Get the payload
+      }
+     
+      radio.stopListening();                                        // First, stop listening so we can talk   
+      radio.write( &got_time, sizeof(unsigned long) );              // Send the final one back.      
+      radio.startListening();                                       // Now, resume listening so we catch the next packets.     
+      Serial.print(F("Sent response "));
+      Serial.println(got_time);  
+   }
+ }
+
+
+
+
+/****************** Change Roles via Serial Commands ***************************/
+
+  if ( Serial.available() )
+  {
+    char c = toupper(Serial.read());
+    if ( c == 'T' && role == 0 ){      
+      Serial.println(F("*** CHANGING TO TRANSMIT ROLE -- PRESS 'R' TO SWITCH BACK"));
+      role = 1;                  // Become the primary transmitter (ping out)
+    
+   }else
+    if ( c == 'R' && role == 1 ){
+      Serial.println(F("*** CHANGING TO RECEIVE ROLE -- PRESS 'T' TO SWITCH BACK"));      
+       role = 0;                // Become the primary receiver (pong back)
+       radio.startListening();
+       
     }
   }
-  
-  //checkRFIDReader();
-  */
-}
+
+
+} // Loop
 
