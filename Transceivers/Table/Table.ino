@@ -95,21 +95,22 @@ void loop() {
   check_switches();
 
   for (byte i = 0; i < NUMBUTTONS; i++) {
-    //if (justpressed[i]) {
-    //  Serial.print(i, DEC);
-    //  Serial.println(" Just pressed"); 
-      // remember, check_switches() will CLEAR the 'just pressed' flag
-   // }
+    if (justpressed[i]) {
+      //sendButtonPress(1,i);
+    }
     if (justreleased[i]) {
-      Serial.print(i, DEC);
-      Serial.println(" Just released");
-      // remember, check_switches() will CLEAR the 'just pressed' flag
+      sendButtonPress(2,i);
     }
     if (pressed[i]) {
-      Serial.print(i, DEC);
-      Serial.println(" pressed");
-      radio.write( &i, sizeof(byte));
-      // is the button pressed down at this moment
+      sendButtonPress(3,i);
     }
   }
 }
+
+byte message[2];
+void sendButtonPress(byte pressType, byte button) {
+  message[0] = pressType;
+  message[1] = button;
+  radio.write( &message, sizeof(message));
+}
+

@@ -1,10 +1,3 @@
-
-/*
-* Getting Started example sketch for nRF24L01+ radios
-* This is a very basic example of how to send data from one node to another
-* Updated: Dec 2014 by TMRh20
-*/
-
 #include <SPI.h>
 #include "RF24.h"
 
@@ -39,21 +32,36 @@ void setup() {
   radio.startListening();
 }
 
+byte message[2];
 void loop() {
   
 /****************** Listen ***************************/
-
-    byte buttonPressed;
     
     if( radio.available()){
                                                                     // Variable for the received timestamp
       while (radio.available()) {                                   // While there is data ready
-        radio.read( &buttonPressed, sizeof(byte) );             // Get the payload
+        radio.read( &message, sizeof(message) );             // Get the payload
       }
      
-      //radio.stopListening();                                        // First, stop listening so we can talk   
-      Serial.print(F("Sent response "));
-      Serial.println(buttonPressed);  
+      radio.stopListening();                                        // First, stop listening so we can talk   
+      Serial.print(F("Button "));
+      Serial.print(message[1], DEC);
+
+      switch (message[0]) {
+        case 1:
+          Serial.println(F(" just pressed"));
+          break;
+        case 2:
+          Serial.println(F(" just released"));
+          break;
+        case 3:
+          Serial.println(F(" pressed"));
+          break;
+        default: 
+         Serial.println(F(" something"));
+        break;
+      }
+      radio.startListening();
    }
 } // Loop
 
