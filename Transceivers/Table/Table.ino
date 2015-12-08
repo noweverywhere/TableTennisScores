@@ -1,10 +1,12 @@
 #include <SPI.h>
 #include "RF24.h"
+#include <MFRC522.h>
 
 /****************** Radio Config ***************************/
 /***      Set this radio as radio number 0 or 1         ***/
 bool radioNumber = 0;
-RF24 radio(7,8);
+#define RADIO_SS   8
+RF24 radio(7,RADIO_SS);
 byte addresses[][6] = {"1Node","2Node"};
 /**********************************************************/
 
@@ -21,20 +23,22 @@ byte justpressed[NUMBUTTONS];
 byte justreleased[NUMBUTTONS];
 /**********************************************************/
 
-
+/****************** RFID Config ***************************/
+#define RST_PIN    6 
+#define RFID_SS    5 // SDA
+MFRC522 mfrc522(RFID_SS, RST_PIN);
+/**********************************************************/
 
 void setup() {
-  
- 
   Serial.begin(115200);
   Serial.println(F("TABLE"));
   configureRadio();
   configureButtons();
+  Serial.println(F("Configuration Complete"));
 }
 
 void configureRadio() {
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH); //set 5 high since it is the ss for the RFID reader
+  
   radio.begin();
   radio.powerUp();
 
@@ -59,8 +63,6 @@ void check_switches()
   static byte currentstate[NUMBUTTONS];
   
   byte index;
-
-  
   if ((lasttime + DEBOUNCE) > millis()) {
     // not enough time has passed to debounce
     return; 
@@ -107,10 +109,32 @@ void loop() {
   }
 }
 
+void switchToRadio() {
+  Serial.println(F("Select radio as slave"));
+  pinMode(RFID_SS, OUTPUT);
+  pinMode(RADIO_SS, OUTPUT);
+  digitalWrite(RFID_SS, HIGH);
+  digitalWrite(RADIO_SS, LOW); 
+}
+
+void switchToRFID() {
+  Serial.println(F("Select RFID as slave"));
+  pinMode(RFID_SS, OUTPUT);
+  pinMode(RADIO_SS, OUTPUT);
+  digitalWrite(RFID_SS, LOW);
+  digitalWrite(RADIO_SS, HIGH);
+}
+
 byte message[2];
 void sendButtonPress(byte pressType, byte button) {
+  Serial.print(F("Button "));
+  Serial.print(button, DEC);
+  Serial.print(F(" of type: "));
+  Serial.println(pressType, DEC);
+  switchToRadio(); 
   message[0] = pressType;
   message[1] = button;
   radio.write( &message, sizeof(message));
+  switchToRFID();
 }
 
